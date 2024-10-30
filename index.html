@@ -208,7 +208,7 @@ msgtype: メッセージタイプ
 
 <h3>navigationヘッダー</h3>
 <pre><code>
-{"navigation": {<ベースメッセージ>, "msg_type": ナビゲーションタイプ, "x": float, "y": float, "th": float}}
+{"navigation": {<ベースメッセージ>, "msg_type": ナビゲーションタイプ, "x": float, "y": float, "yaw": float}}
 </code></pre>
 <p><strong>ナビゲーションタイプ一覧</strong></p>
 <ul>
@@ -789,7 +789,7 @@ with open(save_path, 'wb') as file:
         "x": float, 
         "y": float, 
         "z": float, 
-        "theta": float, 
+        "yaw": float, 
         "battery_level": float, 
         "status": int, 
         "linear_vel_x": float, 
