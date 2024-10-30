@@ -1,55 +1,930 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sample GitHub Pages</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>HALNA API 仕様書 ver.1</title>
+    <style>
+        body {
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            margin: 20px;
+            background-color: #f9f9f9;
+            color: #333;
+        }
+        h1, h2, h3 {
+            color: #2c3e50;
+        }
+        h1 {
+            font-size: 2.5em;
+            border-bottom: 2px solid #bdc3c7;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        h2 {
+            font-size: 2em;
+            border-bottom: 1px solid #bdc3c7;
+            padding-bottom: 8px;
+            margin-top: 40px;
+            margin-bottom: 20px;
+        }
+        h3 {
+            font-size: 1.5em;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+        p {
+            margin-bottom: 15px;
+        }
+        ul, ol {
+            margin-left: 20px;
+            margin-bottom: 20px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        pre {
+            background-color: #ecf0f1;
+            padding: 15px;
+            overflow-x: auto;
+            border: 1px solid #bdc3c7;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        code {
+            background-color: #ecf0f1;
+            padding: 2px 4px;
+            border-radius: 4px;
+            font-family: Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace;
+            font-size: 0.95em;
+        }
+        a {
+            color: #2980b9;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        .note {
+            background-color: #fff8c4;
+            border-left: 6px solid #f1c40f;
+            padding: 10px;
+            margin-bottom: 20px;
+        }
+    </style>
 </head>
 <body>
 
-    <!-- Header Section -->
-    <header>
-        <h1>Welcome to My GitHub Pages</h1>
-        <p>This is a sample page for my GitHub Pages deployment.</p>
-        <nav>
-            <ul>
-                <li><a href="#about">About</a></li>
-                <li><a href="#projects">Projects</a></li>
-                <li><a href="#contact">Contact</a></li>
-            </ul>
-        </nav>
-    </header>
+<h1>HALNA API 仕様書 ver.1</h1>
 
-    <!-- About Section -->
-    <section id="about">
-        <h2>About Me</h2>
-        <p>Hello! I'm a developer working on various projects. This page is a showcase of my work.</p>
-        <img src="images/sample-image.jpg" alt="A sample image for GitHub Pages">
-    </section>
+<h2>目次</h2>
+<ol>
+    <li><a href="#概要">概要</a></li>
+    <li><a href="#通信仕様">通信仕様</a></li>
+    <li><a href="#イニシャルシークエンス">イニシャルシークエンス</a></li>
+    <li><a href="#メッセージフォーマット">メッセージフォーマット</a></li>
+    <li><a href="#ロボットのメッセージ応答">ロボットのメッセージ応答</a></li>
+    <li><a href="#ファイルの送信方法">ファイルの送信方法</a></li>
+    <li><a href="#リアルタイム情報">リアルタイム情報</a></li>
+    <li><a href="#マネジメントコンソール">マネジメントコンソール</a></li>
+</ol>
 
-    <!-- Projects Section -->
-    <section id="projects">
-        <h2>Projects</h2>
+<h2 id="概要">１．概要</h2>
+<p>
+HALNAは外部からの通信でコマンドでの操作が可能です。また、付属のコントローラーを用いてリアルタイムでの操作とコマンドを打つことができます。<br>
+また、メッセージフォーマットを公開することでお客様自身がお持ちのプラットフォームから簡単に操作できるようにしました。<br>
+このドキュメントでは、通信仕様から現在ロボット側で対応できるコマンド一覧をフォーマットも含めて公開しています。
+</p>
+
+<h2 id="通信仕様">２．通信仕様</h2>
+<p>
+HALNAロボットとサーバー間の通信は、セキュアなWebソケット（<code>wss</code>）を使用します。データはJSON形式でやり取りされ、リアルタイムかつ双方向の通信を実現します。
+</p>
+
+<h3>Webソケット (<code>wss</code>) 通信</h3>
+<p>
+通信は以下のエンドポイントを通じて確立されます:
+</p>
+<pre><code>
+wss://[サーバーアドレス]:[ポート番号]/[デスティネーション]/[ロボット名]/
+</code></pre>
+<p>
+- <strong>サーバーアドレス</strong>: 接続先のサーバーのIPアドレスまたはドメイン名。<br>
+- <strong>ポート番号</strong>: サーバーがリッスンしているポート番号。デフォルトでは<code>5000</code>を使用します。<br>
+- <strong>デスティネーション</strong>: 通信の目的地を示す識別子。<br>
+- <strong>ロボット名</strong>: ロボットごとのユニークな名前。
+<p>
+</p>
+セキュアな通信を行うため、SSL/TLS暗号化が施された<code>wss</code>プロトコルを使用します。必要に応じて、SSL証明書の検証設定を行ってください。
+</p>
+
+<h3>JSON形式のメッセージ</h3>
+<p>
+通信でやり取りされるデータは、すべてJSON形式で構造化されています。これにより、さまざまなプログラミング言語やプラットフォームで容易にパースおよび生成が可能です。
+</p>
+<p>
+基本的なメッセージフォーマットは以下の通りです:
+</p>
+<pre><code>
+{
+    "sender": "送り側の名前",
+    "timestamp": "現在時刻",
+    "msgtype": "メッセージタイプ",
+    // その他のフィールドはメッセージタイプに依存
+}
+</code></pre>
+<p>
+- <strong>sender</strong>: メッセージを送信するエンティティの名前（ロボット名またはサーバー名）。<br>
+- <strong>timestamp</strong>: メッセージ送信時のタイムスタンプ。ISO8601形式などの標準的な日時形式を推奨します。<br>
+- <strong>msgtype</strong>: メッセージの種類を示す識別子。詳細はメッセージフォーマットセクションを参照してください。
+</p>
+
+
+<h2 id="イニシャルシークエンス">3．イニシャルシークエンス</h2>
+<ol>
+    <li>
+        <strong>１．ロボット→サーバーとの通信を確立</strong>
+        <pre><code>
+            self.socket.ws = websocket.WebSocketApp(
+                "wss://%s:%s/%s/%s/"
+                % (self.server_address, self.port_number, self.destination, self.robot_name),
+                on_message=self.on_message_received,
+                on_open=self.on_open,
+                on_error=self.on_error,
+                on_close=self.on_close
+            ) 
+        </code></pre>
+        <p>ロボットはまず、<code>https://サーバーアドレス：ポート番号/デスティネーション/ロボット名</code>にアクセスします。
+            ex) https://192.168.1.1:5000/sample/robot1
+        </p>
+    </li>
+    <li>
+        <strong>ロボット＋通信が確立されたタイミングで以下の情報を送信</strong>
         <ul>
-            <li><a href="https://github.com/username/project1">Project 1</a> - Description of project 1.</li>
-            <li><a href="https://github.com/username/project2">Project 2</a> - Description of project 2.</li>
-            <li><a href="https://github.com/username/project3">Project 3</a> - Description of project 3.</li>
+            <li>
+                <strong>自身の情報を送信</strong>
+                <pre><code>
+{<ベースメッセージ>, "msg_type": "INNITIAL_CONNECTION", "destination":"指定されたサーバー名", "map_id":所属しているマップのID, "ip_address": 自身のIPアドレス（指定されたサーバーアドレスと同じサブネット, "building_number": 0, "floor_level":0 }
+                </code></pre>
+            </li>
+            <li>
+                <strong>現在所属しているマップのグラフの送信</strong>
+                <p>後述の「ファイルの送信方法」セクションを参照してください。</p>
+            </li>
+            <li>
+                <strong>現在のパラメータの送信</strong>
+                <p>後述の「ファイルの送信方法」セクションを参照してください。</p>
+            </li>
         </ul>
-    </section>
+        <p>ロボット側は上記のコマンドを送った時点で、次の命令が来るまで待機します。</p>
+    </li>
+</ol>
 
-    <!-- Contact Section -->
-    <section id="contact">
-        <h2>Contact Me</h2>
-        <p>You can reach out to me at <a href="mailto:your-email@example.com">your-email@example.com</a>.</p>
-    </section>
+<h2 id="メッセージフォーマット">4．メッセージフォーマット（サーバーから送ることができるコマンド集）</h2>
+<h3>ベースメッセージ</h3>
+<p>下記のベースメッセージはすべてのメッセージにつけられます。msg_type毎にそれぞれ異なる要素が追加されます。</p>
+<pre><code>
+sender: サーバー名（ロボットに指定したサーバー名と同一のもの）
+duration: 120
+command_id: 0
+msgtype: メッセージタイプ
+</code></pre>
 
-    <!-- Footer -->
-    <footer>
-        <p>&copy; 2024 Your Name. All rights reserved.</p>
-    </footer>
+ここでは簡単のため、<ベースメッセージ>は上記のうち常に同一のものを指します。
+<pre><code>
+{sender: サーバー名（ロボットに指定したサーバー名と同一のもの）},
+{duration: 120},
+{command_id: 0}
+</code></pre>
 
-    <!-- Optional JavaScript -->
-    <script src="script.js"></script>
+<h3>メッセージヘッダー一覧</h3>
+<ul>
+    <li style="font-size: 1.5em;">navigation</li>
+    <li style="font-size: 1.5em;">cmd_vel</li>
+    <li style="font-size: 1.5em;">graph</li>
+    <li style="font-size: 1.5em;">rosbag</li>
+    <li style="font-size: 1.5em;">picture</li>
+    <li style="font-size: 1.5em;">process</li>
+</ul>
+
+<h3>navigationヘッダー</h3>
+<pre><code>
+{"navigation": {<ベースメッセージ>, "msg_type": ナビゲーションタイプ, "x": float, "y": float, "th": float}}
+</code></pre>
+<p><strong>ナビゲーションタイプ一覧</strong></p>
+<ul>
+    <li>NAVIGATION: ゴール地点の設定</li>
+    <li>INITPOSE: 初期位置の設定</li>
+    <li>QUIT: Navigationの停止</li>
+    <li>FOLLOW_PATH*: 定義したポイントセットを追従させる
+        <p>*このときのみ以下のフォーマット</p>
+        <pre><code>
+        {"navigation": {<ベースメッセージ>, "msg_type": FOLLOW_PATH, points: [{x: float, y: float, z: float, yaw: float}, {x: float, y: float, z: float, yaw: float}, ...]}}
+        </code></pre>
+    </li>
+</ul>
+
+
+<h3>cmd_velヘッダー</h3>
+<pre><code>
+{"cmd_vel": {<ベースメッセージ>, "msg_type": CMD_VEL, "linear_x": float, "linear_y": float, "angular_z": float, "linear_z": float}}
+</code></pre>
+<p>ロボットを遠隔から操作するときに使います。</p>
+
+<h3>graphヘッダー</h3>
+<pre><code>
+{"graph": {<ベースメッセージ>, "msg_type": "graph", "type": グラフタイプ, /* 各グラフタイプに依存 */}}
+</code></pre>
+<p><strong>グラフタイプ一覧:</strong></p>
+<ul>
+    <li>
+        <strong>initial_node</strong>
+        <pre><code>
+{"graph": { <ベースメッセージ>,"msg_type": "graph", "type": "initial_node", "id": int}}
+        </code></pre>
+        <p>init poseを送る代わりに指定されたノードの座標をinit poseとして送ることができます。</p>
+    </li>
+    <li>
+        <strong>keystroke</strong>
+        <pre><code>
+{"graph": {<ベースメッセージ>, "msg_type": "graph", "type": "keystroke", "keystroke": string}}
+        </code></pre>
+        <p>特定のkeystrokeを送ることで以下のことができます。</p>
+        <ul>
+            <li>w: 現在地に新たにポイントを追加</li>
+            <li>s: 追加されたポイントを保存</li>
+            <li>x: 現在地を現在パンチルトカメラが向いている方向で保存</li>
+        </ul>
+    </li>
+    <li>
+        <strong>floor_info</strong>
+        <pre><code>
+{"graph": {<ベースメッセージ>, "msg_type": "graph", "type": "floor_info", "map_id": string, "building_number": int, "floor_level": int}}
+        </code></pre>
+        <div class="note">
+            <strong>注意！！</strong>このコマンドはマップを作っているときにしか動作しません。
+        </div>
+        <p>現在のグラフの情報とマップをセーブして、フロアの切り替えを行う。ナビゲーション中にこの場所にたどり着いた場合、マップとグラフの切り替えを行う。</p>
+    </li>
+    <li>
+        <strong>goal</strong>
+        <pre><code>
+{"graph": {<ベースメッセージ>, "msg_type": "graph", "type": "goal", "id": int}}
+        </code></pre>
+        <div class="note">
+            <strong>注意！！</strong>このコマンドはNavigation中にしか使えません。
+        </div>
+        <p>現在表示されているグラフの中でidで指定されたポイントに向かう。</p>
+    </li>
+</ul>
+
+<h3>rosbagヘッダー</h3>
+<pre><code>
+{"rosbag": {<ベースメッセージ>, "msg_type": "rosbag", "type": rosbagのタイプ, /* タイプに依存 */}}
+</code></pre>
+<p><strong>rosbagタイプ一覧</strong></p>
+<ul>
+    <li>
+        <strong>record_start</strong>
+        <pre><code>
+{"rosbag": {<ベースメッセージ>, "msg_type": "rosbag", "type": "record_start"}}
+        </code></pre>
+        <p>全トピックをレコード開始</p>
+    </li>
+    <li>
+        <strong>record_selected</strong>
+        <pre><code>
+{"rosbag": {<ベースメッセージ>, "msg_type": "rosbag", "type": "record_selected", "topics": topicName1 topicName2 ...}}
+        </code></pre>
+        <p>指定されたトピックのみをレコード開始</p>
+    </li>
+    <li>
+        <strong>play</strong>
+        <pre><code>
+{"rosbag": {<ベースメッセージ>, "msg_type": "rosbag", "type": "play", "title": rosbag title}}
+        </code></pre>
+        <p>指定されたロスバグタイトルを開始</p>
+    </li>
+    <li>
+        <strong>pause</strong>
+        <pre><code>
+{"rosbag": {<ベースメッセージ>, "msg_type": "rosbag", "type": "pause"}}
+        </code></pre>
+        <p>プレイ中のロスバグを一時停止</p>
+    </li>
+    <li>
+        <strong>record_stop</strong>
+        <pre><code>
+{"rosbag": {<ベースメッセージ>, "msg_type": "rosbag", "type": "record_stop"}}
+        </code></pre>
+        <p>プレイ中のロスバグを終了</p>
+    </li>
+    <li>
+        <strong>resume</strong>
+        <pre><code>
+{"rosbag": {<ベースメッセージ>, "msg_type": "rosbag", "type": "resume"}}
+        </code></pre>
+        <p>一時停止中の中のロスバグを再開</p>
+    </li>
+    <li>
+        <strong>change_speed</strong>
+        <pre><code>
+{"rosbag": {<ベースメッセージ>, "msg_type": "rosbag", "type": "change_speed", "speed": int}}
+        </code></pre>
+        <p>プレイ中のロスバグのプレイスピードを変更</p>
+    </li>
+    <li>
+        <strong>get_rosbags</strong>
+        <pre><code>
+{"rosbag": {<ベースメッセージ>, "msg_type": "rosbag", "type": "get_rosbags"}}
+        </code></pre>
+        <p>ロボット本体にあるロスバグのタイトルを取得</p>
+    </li>
+</ul>
+
+<h3>pictureヘッダー</h3>
+<pre><code>
+{"picture": {<ベースメッセージ>, "msg_type": "picture", "type": pictureのタイプ, /* タイプに依存 */}}
+</code></pre>
+<p><strong>pictureタイプ一覧</strong></p>
+<ul>
+    <li>
+        <strong>get_all</strong>
+        <pre><code>
+{"picture": {<ベースメッセージ>, "msg_type": "picture", "type": "get_all"}}
+        </code></pre>
+        <p>現在のマップIDに紐づくロボット本体に保存されている写真を取得</p>
+    </li>
+    <li>
+        <strong>selected</strong>
+        <pre><code>
+{"picture": {<ベースメッセージ>, "msg_type": "picture", "type": "selected", "date": YYYYMMDD}}
+        </code></pre>
+        <p>ロボット本体に保存されている現在のマップIDの指定された日付の写真を取得</p>
+    </li>
+</ul>
+
+<h3>processヘッダー</h3>
+<pre><code>
+{"process": {<ベースメッセージ>, "msg_type": "process", "systemctl": プロセスタイプ}}
+</code></pre>
+<p><strong>プロセスタイプ：</strong></p>
+<ul>
+    <li><strong>start_navigation</strong>
+        <p>Navigationに必要なプロセスを立ち上げる</p>
+    </li>
+           
+    <li><strong>start_make_map</strong> 
+        <p>Make Mapに必要なプロセスを立ち上げる</p>
+    </li>
+    <li><strong>killall</strong>
+        <p>全てのプロセスを終了させる</p>
+    </li>
+    <li><strong>initial_check</strong>
+        <p>ロボットとの疎通確認を行う。</p>
+    </li>
+    <li><strong>lio/save_map</strong>
+        <p>（Map作成中のみ）現在のマップをセーブする</p>
+    </li>
+    <li><strong>convert_3d_to_2d</strong>
+        <p>保存された３次元マップデータ（pcd）をjson, png, yaml形式に変換する</p>
+    </li>
+    <li><strong>get_map</strong>
+        <p>保存されたマップデータ（json, png, yaml）を取得する</p>
+    </li>
+    <li><strong>demo</strong>
+        <p>スケジュールリストの中で一番先頭にあるスケジュールを実行する</p>
+    </li>
+    <li><strong>reboot</strong>
+        <p>HalnaPCを再起動する</p>
+    </li>
+</ul>
+
+<h2 id="ロボットのメッセージ応答">5．ロボットのメッセージ応答</h2>
+
+<h3>概要</h3>
+<p>
+ロボットはサーバーから受信した各種メッセージに対して、適切な応答や動作を行います。以下では、各メッセージタイプに対するロボットの応答内容と、その際に送信されるJSON形式のレスポンスメッセージを説明します。
+</p>
+
+<h3>navigationメッセージへの応答</h3>
+<ul>
+    <li><strong>NAVIGATION</strong>: 指定された座標（x, y, th）にロボットが移動を開始します。移動が完了すると、結果をサーバーに通知します。</li>
+</ul>
+<p><strong>レスポンスメッセージ形式:</strong></p>
+<pre><code>
+{
+    "sender": "ロボット名",
+    "timestamp": "現在時刻",
+    "msgtype": "NAVIGATION_RESPONSE",
+    "destination": "サーバー名",
+    "command_id": "受信したcommand_id",
+    "result": TrueまたはFalse
+}
+</code></pre>
+
+<ul>
+    <li><strong>INITPOSE</strong>: 初期位置を設定し、完了を通知します。</li>
+</ul>
+<p><strong>※INITPOSEに対する個別のレスポンスはありません。処理が完了すると状態が更新されます。</strong></p>
+
+<ul>
+    <li><strong>QUIT</strong>: ナビゲーションを停止し、完了を通知します。</li>
+</ul>
+<p><strong>※QUITに対する個別のレスポンスはありません。処理が完了すると状態が更新されます。</strong></p>
+
+<ul>
+    <li><strong>FOLLOW_PATH</strong>: 指定された経路を追従し、完了後に結果を通知します。</li>
+</ul>
+<p><strong>レスポンスメッセージ形式:</strong></p>
+<pre><code>
+{
+    "sender": "ロボット名",
+    "timestamp": "現在時刻",
+    "msgtype": "FOLLOW_PATH_RESPONSE",
+    "destination": "サーバー名",
+    "command_id": "受信したcommand_id",
+    "result": TrueまたはFalse
+}
+</code></pre>
+
+<h3>cmd_velメッセージへの応答</h3>
+<p>
+ロボットは速度指令を受け取り、即座に移動を開始します。<strong>cmd_velメッセージに対する個別の応答メッセージは送信されません。</strong>
+</p>
+
+<h3>graphメッセージへの応答</h3>
+<ul>
+    <li><strong>initial_node</strong>: 初期ノードの設定が完了すると通知します。</li>
+</ul>
+<p><strong>※initial_nodeに対する個別のレスポンスはありません。</strong></p>
+
+<ul>
+    <li><strong>keystroke</strong>: キーストロークの処理結果を通知します。</li>
+</ul>
+<p><strong>※keystrokeに対する個別のレスポンスはありません。</strong></p>
+
+<ul>
+    <li><strong>floor_info</strong>: フロア情報の切り替えが完了すると、メッセージをサーバーに送信します。</li>
+</ul>
+<p><strong>レスポンスメッセージ形式:</strong></p>
+<pre><code>
+// 成功時
+{
+    "sender": "ロボット名",
+    "timestamp": "現在時刻",
+    "msgtype": "MESSAGE",
+    "destination": "サーバー名",
+    "command_id": "0",
+    "msg": "Change the floor to [building_number]_[floor_level]",
+    "error": False
+}
+</code></pre>
+
+<ul>
+    <li><strong>goal</strong>: 指定されたノードへの移動が完了すると、メッセージをサーバーに送信します。</li>
+</ul>
+<p><strong>レスポンスメッセージ形式:</strong></p>
+<pre><code>
+// 成功時
+{
+    "sender": "ロボット名",
+    "timestamp": "現在時刻",
+    "msgtype": "MESSAGE",
+    "destination": "サーバー名",
+    "command_id": "0",
+    "msg": "Published goal with node_name: [id]",
+    "error": False
+}
+</code></pre>
+
+<h3>rosbagメッセージへの応答</h3>
+<p>
+rosbag操作に対する個別のレスポンスはありません。ただし、"get_rosbags"に対しては、利用可能なバッグファイルの一覧を送信します。
+</p>
+<p><strong>レスポンスメッセージ形式（get_rosbagsの場合）:</strong></p>
+<pre><code>
+{
+    "sender": "ロボット名",
+    "timestamp": "現在時刻",
+    "msgtype": "ROSBAG",
+    "destination": "サーバー名",
+    "command_id": "0",
+    "type": "rosbag_name_list",
+    "msg": [バッグファイル名のリスト]
+}
+</code></pre>
+
+<h3>pictureメッセージへの応答</h3>
+<p>
+画像データの送信が完了すると、結果を通知します。
+</p>
+<p><strong>レスポンスメッセージ形式（例）:</strong></p>
+<pre><code>
+// 成功時
+{
+    "sender": "ロボット名",
+    "timestamp": "現在時刻",
+    "msgtype": "MESSAGE",
+    "destination": "サーバー名",
+    "command_id": "0",
+    "msg": "Received all the patrol pictures",
+    "error": False
+}
+</code></pre>
+
+<h3>processメッセージへの応答</h3>
+<p>
+プロセスの開始・停止が完了すると、結果を通知します。
+</p>
+<p><strong>レスポンスメッセージ形式（例: get_mapの場合）:</strong></p>
+<pre><code>
+// 成功時
+{
+    "sender": "ロボット名",
+    "timestamp": "現在時刻",
+    "msgtype": "MESSAGE",
+    "destination": "サーバー名",
+    "command_id": "0",
+    "msg": "Received map files",
+    "error": False
+}
+</code></pre>
+
+<h3>commandメッセージへの応答</h3>
+<p>
+指定されたコマンドの実行結果を通知します。
+</p>
+<p><strong>レスポンスメッセージ形式:</strong></p>
+<pre><code>
+{
+    "sender": "ロボット名",
+    "timestamp": "現在時刻",
+    "msgtype": "RESPONSE",
+    "destination": "サーバー名",
+    "command_id": "受信したcommand_id",
+    "result": TrueまたはFalse
+}
+</code></pre>
+
+<h3>エラーハンドリング</h3>
+<p>
+メッセージの処理中にエラーが発生した場合、ロボットはエラーメッセージと共に処理結果をサーバーに通知します。
+</p>
+<p><strong>エラーメッセージ形式:</strong></p>
+<pre><code>
+{
+    "sender": "ロボット名",
+    "timestamp": "現在時刻",
+    "msgtype": "MESSAGE",
+    "destination": "サーバー名",
+    "command_id": "0",
+    "msg": "エラー内容の説明",
+    "error": True
+}
+</code></pre>
+
+
+<h2 id="ファイルの送信方法">6．ファイルの送信方法</h2>
+
+<h3>概要</h3>
+<p>
+    ロボットはサーバーに対して、マップデータ、グラフデータ、画像データ、パラメータデータなどのファイルや情報を送信することができます。これらの送信にはWebSocketの<b>バイナリメッセージ</b>または<b>テキストメッセージ</b>を使用し、特定のヘッダー情報を付加して送信します。サーバー側では、このヘッダー情報を解析してデータを適切にデコード・保存します。
+</p>
+
+<h3>共通の送信形式</h3>
+<p>
+    すべてのファイルやデータ送信は、共通の形式を使用して行われます。メッセージの構造は以下の通りです。
+</p>
+<pre><code>
+// メッセージ全体の構造（バイナリメッセージの場合）
+[ヘッダー (バイト列)] + '\0' + [追加情報 (バイト列)] + '\0' + [データ (バイト列)]
+
+// メッセージ全体の構造（テキストメッセージの場合）
+{
+    "sender": "ロボット名",
+    "timestamp": "現在時刻",
+    "msgtype": メッセージタイプ,
+    "destination": "サーバー名",
+    "command_id": "0",
+    "type": データタイプ,
+    "msg": データ（JSON形式）
+}
+</code></pre>
+
+<p><strong>各部分の詳細:</strong></p>
+<ul>
+    <li><strong>ヘッダー</strong>: データの種類やファイル名を示す文字列をエンコードしたバイト列。</li>
+    <li><strong>追加情報</strong>: マップ名、フロア名、日付情報など、データに関連する追加情報をエンコードしたバイト列。</li>
+    <li><strong>データ</strong>: 実際のファイル内容やパラメータ情報をバイナリまたはテキスト形式で含む。</li>
+    <li><strong>'\0'</strong>: 各セクションを区切るためのヌル文字（バイト値0）。</li>
+</ul>
+
+<h3>ヘッダーの形式</h3>
+<p>
+    ヘッダーは以下の形式で構成されます。
+</p>
+<pre><code>
+[type]:[name]
+</code></pre>
+<p><strong>例:</strong></p>
+<ul>
+    <li>グラフデータの場合: <code>graph_data:original_graph_node.txt</code></li>
+    <li>マップデータの場合: <code>map_data:GlobalMap.png</code></li>
+    <li>画像データの場合: <code>picture_data:20230101</code></li>
+</ul>
+
+<h3>送信されるデータの種類と対応するtype</h3>
+<ul>
+    <li><strong>グラフデータ</strong>: <code>graph_data</code></li>
+    <li><strong>マップデータ</strong>: <code>map_data</code></li>
+    <li><strong>画像データ</strong>: <code>picture_data</code></li>
+</ul>
+
+<h3>データ送信の例</h3>
+
+<h4>1. グラフデータの送信</h4>
+<p>
+    ロボットがグラフデータ（ノード情報やエッジ情報）をサーバーに送信する場合、以下のようにメッセージを構築します。
+</p>
+<pre><code>
+// ヘッダーの作成
+header = "graph_data:original_graph_node.txt"
+// エンコード
+header_encoded = header.encode('utf-8')
+
+// マップ名とフロア名をエンコード
+map_name_encoded = map_name.encode('utf-8')
+floor_name_encoded = floor_name.encode('utf-8')
+
+// ファイルデータの読み込み
+with open(file_path, 'rb') as file:
+    file_data = file.read()
+
+// メッセージの組み立て
+message = header_encoded + b'\0' + map_name_encoded + b'\0' + floor_name_encoded + b'\0' + file_data
+
+// メッセージの送信
+ws.send(message, opcode=websocket.ABNF.OPCODE_BINARY)
+</code></pre>
+
+<h4>2. マップデータの送信</h4>
+<p>
+    マップデータを送信する場合も、同様の形式を使用します。
+</p>
+<pre><code>
+// ヘッダーの作成
+header = "map_data:GlobalMap.png"
+// エンコード
+header_encoded = header.encode('utf-8')
+
+// マップ名とフロア名をエンコード
+map_name_encoded = map_name.encode('utf-8')
+floor_name_encoded = floor_name.encode('utf-8')
+
+// ファイルデータの読み込み
+with open(map_file_path, 'rb') as file:
+    map_data = file.read()
+
+// メッセージの組み立て
+message = header_encoded + b'\0' + map_name_encoded + b'\0' + floor_name_encoded + b'\0' + map_data
+
+// メッセージの送信
+ws.send(message, opcode=websocket.ABNF.OPCODE_BINARY)
+</code></pre>
+
+<h4>3. 画像データの送信</h4>
+<p>
+    ロボットが撮影した画像データを送信する場合も、同様の形式を使用します。
+</p>
+<pre><code>
+// ヘッダーの作成
+header = "picture_data:20230101"
+// エンコード
+header_encoded = header.encode('utf-8')
+
+// マップ名とファイル名をエンコード
+map_name_encoded = map_name.encode('utf-8')
+file_name_encoded = image_file_name.encode('utf-8')
+
+// 画像データの読み込み
+with open(image_file_path, 'rb') as file:
+    image_data = file.read()
+
+// メッセージの組み立て
+message = header_encoded + b'\0' + map_name_encoded + b'\0' + file_name_encoded + b'\0' + image_data
+
+// メッセージの送信
+ws.send(message, opcode=websocket.ABNF.OPCODE_BINARY)
+</code></pre>
+
+
+<h3>サーバー側でのデコード方法</h3>
+<p>
+    サーバーは受信したバイナリメッセージを以下の手順でデコードします。
+</p>
+<ol>
+    <li>メッセージ全体をバイト列として受信する。</li>
+    <li>ヌル文字（バイト値0）でメッセージを分割します。セクションの数はデータの種類によって異なります。</li>
+    <li>各セクションをUTF-8でデコードします。</li>
+    <li>ヘッダーからデータの種類と名前を取得します。</li>
+    <li>追加情報（マップ名、フロア名など）を取得します。</li>
+    <li>データセクションを適切に処理します。パラメータデータの場合はJSONとしてパースします。</li>
+    <li>必要に応じて、データを適切な場所に保存または適用します。</li>
+</ol>
+
+<h4>デコードの例（Python）</h4>
+<pre><code>
+# 受信したバイナリデータを分割
+sections = message.split(b'\0')
+
+# ヘッダーのデコード
+header = sections[0].decode('utf-8')
+type_, name = header.split(':')
+additional_info = sections[1].decode('utf-8')
+data = sections[2]  # データ部分
+# ファイルの保存先を決定
+save_path = determine_save_path(type_, name, additional_info)
+# ファイルを保存
+with open(save_path, 'wb') as file:
+    file.write(data)
+</code></pre>
+
+<h3>注意事項</h3>
+<ul>
+    <li>メッセージの各セクションはヌル文字<b>'\0'</b>で区切られています。受信側ではこの区切り文字を使用してセクションを分割してください。</li>
+    <li>文字列データは<b>UTF-8エンコーディング</b>でエンコード・デコードします。</li>
+    <li>パラメータデータはJSON形式の文字列をバイト列として送信します。</li>
+    <li>サーバー側では、データの種類に応じて適切な処理を行う必要があります。</li>
+</ul>
+
+<h3>送信されるデータの種類別の処理</h3>
+
+<h4>マップデータ</h4>
+<p>
+    マップデータにはPNGファイル、YAMLファイル、JSONファイルなどが含まれます。これらはマップ名とフロア名に基づいて適切なディレクトリに保存します。
+</p>
+
+<h4>グラフデータ</h4>
+<p>
+    グラフデータはノード情報とエッジ情報のテキストファイルです。マップ名とフロア名に基づいて保存します。
+</p>
+
+<h4>画像データ</h4>
+<p>
+    画像データはロボットが撮影した画像ファイルです。日付やマップ名に基づいて保存します。ファイル名や日付情報はヘッダーや追加情報から取得します。
+</p>
+
+<h4>パラメータデータ</h4>
+<p>
+    パラメータデータはロボットの設定情報を含むJSON形式のデータです。サーバー側でパースして、必要に応じて設定を更新します。
+</p>
+
+
+<h2 id="リアルタイム情報">7. リアルタイム情報</h2>
+ロボットはコネクションが確立し、自己位置が更新されると0.3秒ごとに以下のフォーマットで自身の情報を送信します。
+<pre><code>
+    {   
+        <ベースメッセージ>, 
+        "msg_type": TELEMETRY, 
+        "x": float, 
+        "y": float, 
+        "z": float, 
+        "theta": float, 
+        "battery_level": float, 
+        "status": int, 
+        "linear_vel_x": float, 
+        "linear_vel_y": float, 
+        "angular_vel": float, 
+        "occupied_cells": [{"x": float, "y": float}, {"x": float, "y": float}, ...],
+        "graph_nodes": graph_nodes, *
+        "graph_edges": graph_edges, *
+        "building_number": int,
+        "floor_level": int
+    }
+    </code></pre>
+
+*graph_nodes/graph_edgesは以下のフォーマット(グラフの情報は、現在のマップに紐づいているグラフ情報を送っています。) 
+
+<h3>graph_nodes</h3>
+<pre><code>
+        [ 
+            {               
+                "id": int,
+                "x": float,
+                "y": float,
+                "z": float,
+                "yaw": float,
+                "node_attribute": int,
+                "node_state_1": float,
+                "node_state_2": float,
+                "node_state_3": float
+            },
+            {
+                "id": int,
+                "x": float,
+                "y": float,
+                "z": float,
+                "yaw": float,
+                "node_attribute": int,
+                "node_state_1": float,
+                "node_state_2": float,
+                "node_state_3": float
+            },
+            ...
+        ]
+</code></pre>
+<h3>graph_edges</h3>
+<pre><code>
+        [ 
+            {               
+                "id": int,
+                "point_a":{
+                    "x": float,
+                    "y": float,
+                    "z": float
+                },
+                "point_b":{
+                    "x": float,
+                    "y": float,
+                    "z": float                
+                },
+                "way_to_walk": int,
+                "robot_speed": float,
+                "edge_state": int,
+                "edge_state_1":float,
+                "edge_state_2":float,
+                "edge_state_3":float,
+                "edge_state_4":float,
+            },
+            {
+                "id": int,
+                "point_a":{
+                    "x": float,
+                    "y": float,
+                    "z": float
+                },
+                "point_b":{
+                    "x": float,
+                    "y": float,
+                    "z": float                
+                },
+                "way_to_walk": int,
+                "robot_speed": float,
+                "edge_state": int,
+                "edge_state_1":float,
+                "edge_state_2":float,
+                "edge_state_3":float,
+                "edge_state_4":float,
+            },
+            ...
+        ]
+</code></pre>
+
+
+<h2 id="マネジメントコンソール">8. マネジメントコンソール</h2>
+<p>
+    ロボットは内部にネットワーク設定やパラメータ情報、グラフの編集、そして巡回経路設定を行えるサーバーを立てています。<br>
+    アクセス方法は <a href="http://robotのIPアドレス:8000" target="_blank">http://robotのIPアドレス:8000</a> です。
+</p>
+
+<h3>ポータル画面</h3>
+<p>以下がアクセスした先のポータル画面です。</p>
+<img src="images/portal.png" alt="Portal screen" style="width:100%; max-width:600px;">
+
+<h3>各ページの設定内容</h3>
+<ul>
+    <dev>
+        <li>
+            <strong>Network Configurator</strong>: SSIDとそのパスワードの登録。<br>
+            Typeを「Manual」に設定すると、固定IPアドレス、サブネットマスク、ゲートウェイ、DNSを個別で設定できます。
+            
+        </li>
+        <img src="images/network.png" alt="network screen" style="width:100%; max-width:600px;">
+    </dev>
+    <dev>
+        <li>
+            <strong>Config Editor</strong>: ロボットが自動起動時に参照するパラメータを確認・変更できます。
+        </li>
+        <img src="images/config.png" alt="config screen" style="width:100%; max-width:600px;">
+    </dev>
+    <dev>
+        <li>
+            <strong>Parameter Editor</strong>: ロボットの自律走行時に参照するパラメータを確認・変更できます。
+        </li>
+        <img src="images/param.png" alt="param screen" style="width:100%; max-width:600px;">
+    </dev>
+    <dev>
+        <li>
+            <strong>Graph Editor</strong>: ロボットが自律走行時に経由するグラフの設定を確認・変更できます。
+        </li>
+        <img src="images/graph.png" alt="graph screen" style="width:100%; max-width:600px;">
+    </dev>
+    <dev>
+        <li>
+            <strong>Schedule Handler</strong>: 定期巡回を行う際のポイントや定時巡回の時間設定を行えます。
+        </li>
+        <img src="images/schedule.png" alt="schedule screen" style="width:100%; max-width:600px;">
+    </dev>
+</ul>
 </body>
 </html>
